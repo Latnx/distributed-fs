@@ -3,6 +3,7 @@ syntax = "proto3";
 package fs;
 option go_package = "proto/fs;fs";
 
+// 服务中的方法
 service FileSystem {
   rpc WriteFile(WriteRequest) returns (WriteResponse);
   rpc ReadFile(ReadRequest) returns (ReadResponse);
@@ -10,6 +11,7 @@ service FileSystem {
   rpc ListFiles(ListRequest) returns (ListResponse);
 }
 
+// 相当于结构体
 message WriteRequest {
   string filename = 1;
   bytes data = 2;

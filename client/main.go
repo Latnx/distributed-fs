@@ -3,15 +3,16 @@ package main
 import (
 	"context"
 	"log"
-	"time"
 
 	pb "grpc-distributed-fs/proto/fs"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
-	conn, err := grpc.Dial(":50051", grpc.WithInsecure())
+
+	conn, err := grpc.NewClient(":50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
@@ -19,13 +20,10 @@ func main() {
 
 	client := pb.NewFileSystemClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-	defer cancel()
-
 	// 上传文件
-	_, err = client.WriteFile(ctx, &pb.WriteRequest{
+	_, err = client.WriteFile(context.Background(), &pb.WriteRequest{
 		Filename: "example2.txt",
-		Data:     []byte("Hello, gRPC!"),
+		Data:     []byte("Hello, gRPC!!!!!"),
 	})
 	if err != nil {
 		log.Fatalf("Failed to write file: %v", err)
@@ -33,7 +31,7 @@ func main() {
 	log.Println("File uploaded successfully")
 
 	// 列出文件
-	listResp, err := client.ListFiles(ctx, &pb.ListRequest{})
+	listResp, err := client.ListFiles(context.Background(), &pb.ListRequest{})
 	if err != nil {
 		log.Fatalf("Failed to list files: %v", err)
 	}
