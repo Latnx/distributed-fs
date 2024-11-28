@@ -1,39 +1,57 @@
 package main
 
 import (
-	"context"
+	"bufio"
+	"fmt"
 	"log"
+	"os"
+	"strings"
 
-	pb "grpc-distributed-fs/proto/fs"
+	"grpc-distributed-fs/metadata"
 
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 )
 
 func main() {
-
-	conn, err := grpc.NewClient(":50051", grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(":50051", grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
 	defer conn.Close()
 
-	client := pb.NewFileSystemClient(conn)
+	client := NewClient(conn)
+	tree := metadata.NewFileTree() // 初始化文件树
 
-	// 上传文件
-	_, err = client.WriteFile(context.Background(), &pb.WriteRequest{
-		Filename: "example2.txt",
-		Data:     []byte("Hello, gRPC!!!!!"),
-	})
-	if err != nil {
-		log.Fatalf("Failed to write file: %v", err)
-	}
-	log.Println("File uploaded successfully")
+	reader := bufio.NewReader(os.Stdin)
+	fmt.Println("Welcome to the Distributed File System!")
+	for {
+		fmt.Printf("%s> ", tree.Current.Metadata.Name)
+		input, _ := reader.ReadString('\n')
+		command := strings.Fields(strings.TrimSpace(input))
+		if len(command) == 0 {
+			continue
+		}
 
-	// 列出文件
-	listResp, err := client.ListFiles(context.Background(), &pb.ListRequest{})
-	if err != nil {
-		log.Fatalf("Failed to list files: %v", err)
+		switch command[0] {
+		case "ls":
+			fmt.Println("Contents:", tree.Ls())
+		case "cd":
+			ChangeDirectory(tree, command)
+		case "mkdir":
+			MakeDirectory(tree, command)
+		case "upload":
+			UploadFile(client, tree, command)
+		case "download":
+			DownloadFile(client, tree, command)
+		case "rm":
+			RemoveFile(client, tree, command)
+		case "meta":
+			ViewMetadata(tree, command)
+		case "exit":
+			fmt.Println("Exiting...")
+			return
+		default:
+			fmt.Println("Unknown command:", command[0])
+		}
 	}
-	log.Printf("Files: %v", listResp.Files)
 }
