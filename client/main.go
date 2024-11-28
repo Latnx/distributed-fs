@@ -8,10 +8,15 @@ import (
 	"strings"
 
 	"grpc-distributed-fs/metadata"
+	pb "grpc-distributed-fs/proto/fs"
 
 	"google.golang.org/grpc"
 )
 
+// 初始化 gRPC 客户端
+func NewClient(conn *grpc.ClientConn) *Client {
+	return &Client{pb.NewFileSystemClient(conn)}
+}
 func main() {
 	conn, err := grpc.Dial(":50051", grpc.WithInsecure())
 	if err != nil {

@@ -100,6 +100,15 @@ func (t *FileTree) AddFile(name string, size int64) error {
 	return nil
 }
 
+// 删除文件
+func (t *FileTree) RemoveFile(name string) error {
+	if _, exists := t.Current.Children[name]; !exists {
+		return errors.New("file not found")
+	}
+	delete(t.Current.Children, name)
+	return nil
+}
+
 // 获取文件元数据
 func (t *FileTree) GetFileMetadata(name string) (*FileMetadata, error) {
 	node, exists := t.Current.Children[name]

@@ -9,17 +9,10 @@ import (
 
 	"grpc-distributed-fs/metadata"
 	pb "grpc-distributed-fs/proto/fs"
-
-	"google.golang.org/grpc"
 )
 
 type Client struct {
 	pb.FileSystemClient
-}
-
-// 初始化 gRPC 客户端
-func NewClient(conn *grpc.ClientConn) *Client {
-	return &Client{pb.NewFileSystemClient(conn)}
 }
 
 // 上传文件
@@ -35,11 +28,16 @@ func UploadFile(client *Client, tree *metadata.FileTree, command []string) {
 		return
 	}
 	filename := getFileName(localPath)
+
+	// 使用树结构的当前路径作为父目录路径
+	parentPath := tree.Current.Metadata.Name
+
+	// 调用服务端上传
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
 	_, err = client.WriteFile(ctx, &pb.WriteRequest{
-		Filename: filename,
+		Filename: parentPath + filename,
 		Data:     data,
 	})
 	if err != nil {
@@ -47,7 +45,7 @@ func UploadFile(client *Client, tree *metadata.FileTree, command []string) {
 		return
 	}
 
-	err = tree.AddFile(filename, int64(len(data)))
+	err = tree.AddFile(filename, int64(len(data))) // 更新元数据
 	if err != nil {
 		fmt.Printf("Failed to update metadata: %v\n", err)
 		return
@@ -63,16 +61,15 @@ func DownloadFile(client *Client, tree *metadata.FileTree, command []string) {
 		return
 	}
 	filename := command[1]
-	_, err := tree.GetFileMetadata(filename)
-	if err != nil {
-		fmt.Printf("File not found in namespace: %v\n", err)
-		return
-	}
 
+	// 使用树结构的当前路径作为父目录路径
+	parentPath := tree.Current.Metadata.Name
+
+	// 请求服务器读取文件
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	resp, err := client.ReadFile(ctx, &pb.ReadRequest{Filename: filename})
+	resp, err := client.ReadFile(ctx, &pb.ReadRequest{Filename: parentPath + filename})
 	if err != nil {
 		fmt.Printf("Failed to download file: %v\n", err)
 		return
@@ -94,23 +91,32 @@ func RemoveFile(client *Client, tree *metadata.FileTree, command []string) {
 		return
 	}
 	filename := command[1]
-	_, err := tree.GetFileMetadata(filename)
-	if err != nil {
-		fmt.Printf("File not found in namespace: %v\n", err)
-		return
-	}
+
+	// 使用树结构的当前路径作为父目录路径
+	parentPath := tree.Current.Metadata.Name
 
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	_, err = client.DeleteFile(ctx, &pb.DeleteRequest{Filename: filename})
+	_, err := client.DeleteFile(ctx, &pb.DeleteRequest{Filename: parentPath + filename})
 	if err != nil {
 		fmt.Printf("Failed to delete file: %v\n", err)
 		return
 	}
 
-	delete(tree.Current.Children, filename)
+	err = tree.RemoveFile(filename) // 更新元数据
+	if err != nil {
+		fmt.Printf("Failed to update metadata: %v\n", err)
+		return
+	}
+
 	fmt.Printf("File '%s' deleted successfully.\n", filename)
+}
+
+// 工具函数
+func getFileName(path string) string {
+	parts := strings.Split(path, "/")
+	return parts[len(parts)-1]
 }
 
 // 查看文件元数据
@@ -153,10 +159,4 @@ func MakeDirectory(tree *metadata.FileTree, command []string) {
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
-}
-
-// 工具函数
-func getFileName(path string) string {
-	parts := strings.Split(path, "/")
-	return parts[len(parts)-1]
 }
