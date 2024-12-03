@@ -52,14 +52,14 @@ func main() {
 	defer db.Close()
 
 	// 启动 gRPC 服务
-	lis, err := net.Listen("tcp", ":50051")
+	lis, err := net.Listen("tcp", ":50052")
 	if err != nil {
 		log.Fatalf("Failed to listen: %v", err)
 	}
 	grpcServer := grpc.NewServer()
 	pb.RegisterFileSystemServer(grpcServer, &serverImpl{db: db})
 
-	log.Println("Server is running on port 50051")
+	log.Println("Server is running on port 50052")
 	if err := grpcServer.Serve(lis); err != nil {
 		log.Fatalf("Failed to serve: %v", err)
 	}

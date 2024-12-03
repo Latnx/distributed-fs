@@ -12,7 +12,7 @@ type FileChunk struct {
 	OriginalName    string   // 原始文件名
 	Size            int64    // 分片大小（字节）
 	Checksum        string   // 分片校验值，用于数据完整性校验
-	StorageLocation string   // 分片存储位置（路径、URI 等）
+	StorageLocation int      // 分片存储位置（路径、URI 等）
 	Replicas        []string // 副本存储位置列表
 }
 
@@ -96,19 +96,14 @@ func (t *FileTree) Ls() []string {
 }
 
 // 添加文件
-func (t *FileTree) AddFile(name string, size int64) error {
+func (t *FileTree) AddFile(metadata *FileMetadata) error {
+	name := metadata.Name
 	if _, exists := t.Current.Children[name]; exists {
 		return errors.New("file already exists")
 	}
 	t.Current.Children[name] = &FileNode{
-		Metadata: &FileMetadata{
-			Name:             name,
-			Size:             size,
-			CreationTime:     time.Now(),
-			ModificationTime: time.Now(),
-			Chunks:           make([]FileChunk, 1024),
-		},
-		Parent: t.Current,
+		Metadata: metadata,
+		Parent:   t.Current,
 	}
 	return nil
 }

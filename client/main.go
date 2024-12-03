@@ -50,7 +50,7 @@ func main() {
 		case "mkdir":
 			MakeDirectory(tree, command)
 		case "upload":
-			UploadFile(clients, tree, command)
+			UploadFile(clients, tree, command, 512)
 		case "download":
 			DownloadFile(clients, tree, command)
 		case "rm":
