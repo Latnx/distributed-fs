@@ -42,36 +42,40 @@ func UploadFile(clients [](*Client), tree *metadata.FileTree, command []string, 
 		}
 
 		chunkData := data[i:end]
-		// 生成唯一的分片标识符
-		chunkID := fmt.Sprintf("%s_chunk_%d", fileID, i/chunkSize)
+		chunkID := fileID + string(int(i/chunkSize)) // 唯一分片标识符
 
-		storageLocation := int(i) % len(clients)
+		// 分片副本的存储位置
+		storageLocation1 := int(i) % len(clients)                 // 第一个存储节点
+		storageLocation2 := (storageLocation1 + 1) % len(clients) // 第二个存储节点
 
+		// 创建FileChunk对象
 		fileChunk := metadata.FileChunk{
 			ChunkID:         chunkID,
 			FileID:          fileID,
 			ChunkNumber:     int(i / chunkSize),
 			OriginalName:    filename,
 			Size:            int64(len(chunkData)),
-			StorageLocation: storageLocation,
-			Replicas:        []string{},
+			StorageLocation: storageLocation1,                              // 存储位置1
+			Replicas:        []string{fmt.Sprintf("%d", storageLocation2)}, // 存储位置2作为副本
+		}
+
+		// 上传分片到两个节点
+		for _, storageLocation := range []int{storageLocation1, storageLocation2} {
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+			defer cancel()
+
+			_, err = clients[storageLocation].WriteFile(ctx, &pb.WriteRequest{
+				Filename: chunkID,
+				Data:     chunkData,
+			})
+			if err != nil {
+				fmt.Printf("Failed to upload chunk %d to node %d: %v\n", i/chunkSize, storageLocation, err)
+				return
+			}
+			fmt.Printf("Uploaded chunk %d to node %d successfully.\n", i/chunkSize, storageLocation)
 		}
 
 		fileChunks = append(fileChunks, fileChunk)
-
-		// 上传分片
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-		_, err = clients[storageLocation].WriteFile(ctx, &pb.WriteRequest{
-			Filename: chunkID,
-			Data:     chunkData,
-		})
-		if err != nil {
-			fmt.Printf("Failed to upload chunk %d: %v\n", i/chunkSize, err)
-			return
-		}
-
-		fmt.Printf("Uploaded chunk %d successfully.\n", i/chunkSize)
 	}
 
 	// 更新元数据到文件树
@@ -88,7 +92,7 @@ func UploadFile(clients [](*Client), tree *metadata.FileTree, command []string, 
 		return
 	}
 
-	fmt.Printf("File '%s' uploaded successfully in %d chunks.\n", filename, len(fileChunks))
+	fmt.Printf("File '%s' uploaded successfully.\n", filename)
 }
 
 func DownloadFile(clients [](*Client), tree *metadata.FileTree, command []string) {
@@ -117,10 +121,14 @@ func DownloadFile(clients [](*Client), tree *metadata.FileTree, command []string
 		defer cancel()
 
 		clientIndex := chunk.StorageLocation % len(clients)
+		replicasIndex := (clientIndex + 1) % len(clients)
 		resp, err := clients[clientIndex].ReadFile(ctx, &pb.ReadRequest{Filename: chunk.ChunkID})
 		if err != nil {
-			fmt.Printf("Failed to download chunk %d: %v\n", chunk.ChunkNumber, err)
-			return
+			fmt.Printf("Failed to download chunk %d and test get replicas: %v\n", chunk.ChunkNumber, err)
+			resp, err = clients[replicasIndex].ReadFile(ctx, &pb.ReadRequest{Filename: chunk.ChunkID})
+			if err != nil {
+				return
+			}
 		}
 
 		fmt.Printf("Downloaded chunk %d successfully.\n", chunk.ChunkNumber)
