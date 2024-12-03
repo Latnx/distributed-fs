@@ -17,14 +17,19 @@ import (
 func NewClient(conn *grpc.ClientConn) *Client {
 	return &Client{pb.NewFileSystemClient(conn)}
 }
-func main() {
-	conn, err := grpc.Dial(":50051", grpc.WithInsecure())
+func NewConn(port string) *Client {
+	conn, err := grpc.Dial(port, grpc.WithInsecure())
 	if err != nil {
 		log.Fatalf("Failed to connect: %v", err)
 	}
-	defer conn.Close()
-
 	client := NewClient(conn)
+	return client
+}
+func main() {
+	clients := make([](*Client), 2)
+	clients[0] = NewConn(":50051")
+	clients[1] = NewConn(":50052")
+
 	tree := metadata.NewFileTree() // 初始化文件树
 
 	reader := bufio.NewReader(os.Stdin)
@@ -45,11 +50,11 @@ func main() {
 		case "mkdir":
 			MakeDirectory(tree, command)
 		case "upload":
-			UploadFile(client, tree, command)
+			UploadFile(clients, tree, command)
 		case "download":
-			DownloadFile(client, tree, command)
+			DownloadFile(clients, tree, command)
 		case "rm":
-			RemoveFile(client, tree, command)
+			RemoveFile(clients, tree, command)
 		case "meta":
 			ViewMetadata(tree, command)
 		case "exit":

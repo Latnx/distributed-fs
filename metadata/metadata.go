@@ -5,6 +5,17 @@ import (
 	"time"
 )
 
+type FileChunk struct {
+	ChunkID         string   // 分片唯一标识符（如 UUID）
+	FileID          string   // 所属文件唯一标识符
+	ChunkNumber     int      // 分片编号，从 0 开始
+	OriginalName    string   // 原始文件名
+	Size            int64    // 分片大小（字节）
+	Checksum        string   // 分片校验值，用于数据完整性校验
+	StorageLocation string   // 分片存储位置（路径、URI 等）
+	Replicas        []string // 副本存储位置列表
+}
+
 // 文件元数据
 type FileMetadata struct {
 	Name             string
@@ -12,6 +23,7 @@ type FileMetadata struct {
 	Size             int64
 	CreationTime     time.Time
 	ModificationTime time.Time
+	Chunks           []FileChunk // 分片信息列表
 }
 
 // 文件树节点
@@ -94,6 +106,7 @@ func (t *FileTree) AddFile(name string, size int64) error {
 			Size:             size,
 			CreationTime:     time.Now(),
 			ModificationTime: time.Now(),
+			Chunks:           make([]FileChunk, 1024),
 		},
 		Parent: t.Current,
 	}

@@ -16,7 +16,7 @@ type Client struct {
 }
 
 // 上传文件
-func UploadFile(client *Client, tree *metadata.FileTree, command []string) {
+func UploadFile(clients [](*Client), tree *metadata.FileTree, command []string) {
 	if len(command) < 2 {
 		fmt.Println("Usage: upload <local-file-path>")
 		return
@@ -36,7 +36,7 @@ func UploadFile(client *Client, tree *metadata.FileTree, command []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	_, err = client.WriteFile(ctx, &pb.WriteRequest{
+	_, err = clients[0].WriteFile(ctx, &pb.WriteRequest{
 		Filename: parentPath + filename,
 		Data:     data,
 	})
@@ -55,7 +55,7 @@ func UploadFile(client *Client, tree *metadata.FileTree, command []string) {
 }
 
 // 下载文件
-func DownloadFile(client *Client, tree *metadata.FileTree, command []string) {
+func DownloadFile(clients [](*Client), tree *metadata.FileTree, command []string) {
 	if len(command) < 2 {
 		fmt.Println("Usage: download <file-name>")
 		return
@@ -69,7 +69,7 @@ func DownloadFile(client *Client, tree *metadata.FileTree, command []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	resp, err := client.ReadFile(ctx, &pb.ReadRequest{Filename: parentPath + filename})
+	resp, err := clients[0].ReadFile(ctx, &pb.ReadRequest{Filename: parentPath + filename})
 	if err != nil {
 		fmt.Printf("Failed to download file: %v\n", err)
 		return
@@ -85,7 +85,7 @@ func DownloadFile(client *Client, tree *metadata.FileTree, command []string) {
 }
 
 // 删除文件
-func RemoveFile(client *Client, tree *metadata.FileTree, command []string) {
+func RemoveFile(clients [](*Client), tree *metadata.FileTree, command []string) {
 	if len(command) < 2 {
 		fmt.Println("Usage: rm <file-name>")
 		return
@@ -98,7 +98,7 @@ func RemoveFile(client *Client, tree *metadata.FileTree, command []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
 	defer cancel()
 
-	_, err := client.DeleteFile(ctx, &pb.DeleteRequest{Filename: parentPath + filename})
+	_, err := clients[0].DeleteFile(ctx, &pb.DeleteRequest{Filename: parentPath + filename})
 	if err != nil {
 		fmt.Printf("Failed to delete file: %v\n", err)
 		return
@@ -131,10 +131,11 @@ func ViewMetadata(tree *metadata.FileTree, command []string) {
 		fmt.Printf("File not found: %v\n", err)
 		return
 	}
-	fmt.Printf("Metadata for '%s':\n", filename)
-	fmt.Printf("  Size: %d bytes\n", meta.Size)
-	fmt.Printf("  Creation Time: %s\n", meta.CreationTime)
-	fmt.Printf("  Modification Time: %s\n", meta.ModificationTime)
+	// fmt.Printf("Metadata for '%s':\n", filename)
+	// fmt.Printf("  Size: %d bytes\n", meta.Size)
+	// fmt.Printf("  Creation Time: %s\n", meta.CreationTime)
+	// fmt.Printf("  Modification Time: %s\n", meta.ModificationTime)
+	fmt.Printf("Metadata:\n %+v\n", meta)
 }
 
 // 切换目录
