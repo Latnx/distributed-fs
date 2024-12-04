@@ -26,9 +26,10 @@ func NewConn(port string) *Client {
 	return client
 }
 func main() {
-	clients := make([](*Client), 2)
+	clients := make([](*Client), 3)
 	clients[0] = NewConn(":50051")
 	clients[1] = NewConn(":50052")
+	clients[2] = NewConn(":50053")
 
 	tree := metadata.NewFileTree() // 初始化文件树
 
